@@ -1,0 +1,1 @@
+Settings files stored here. Files stored here (apart from this one) should not be under version control. 
