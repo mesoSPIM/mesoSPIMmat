@@ -60,27 +60,30 @@ function imData = rawReader(fname,frames)
     fid = fopen(fname,'r','ieee-le');
 
     if frames==inf
+        % Find out how many frames there are in the file:
+        fseek(fid,0,'eof');
+        nFrames = ftell(fid)/((2048^2)*2);
+        fseek(fid,0,'bof');
+        fprintf('Reading %d frames\n',nFrames)
+        frames = 1:nFrames;
+    end
 
-        imData.imStack = fread(fid,frames,'uint16');
-        nFrames = length(imData.imStack)/pixelsPerFrame;
-        imData.imStack = reshape(imData.imStack, [2048,2048,nFrames]);
-        imData.frames = 1:nFrames;
+    if nFrames~=imData.z_planes
+        fprintf('Found %d frames but metaData reports %d franes\n',...
+            nFrames, imData.z_planes)
+    end
 
-    else
-
-        imData.imStack = zeros([2048,2048,length(frames)], 'uint16');
-        n=1;
-        for ii=1:length(frames)
-            thisPos = frames(ii)-1; %because fseek is zero-indexed
-            startPoint = thisPos * pixelsPerFrame * 2; %because there are 2 bytes per 16 bit int
-            fseek(fid,startPoint,'bof');
-            imData.imStack(:,:,n) = reshape(fread(fid,pixelsPerFrame,'uint16'),[2048,2048]);
-            n=n+1;
-        end % for ii
-        imData.frames = frames;
-    end %if frames
+    imData.imStack = zeros([2048,2048,length(frames)], 'uint16');
+    n=1;
+    for ii=1:length(frames)
+        thisPos = frames(ii)-1; %because fseek is zero-indexed
+        startPoint = thisPos * pixelsPerFrame * 2; %because there are 2 bytes per 16 bit int
+        fseek(fid,startPoint,'bof');
+        imData.imStack(:,:,n) = reshape(fread(fid,pixelsPerFrame,'uint16'),[2048,2048]);
+        n=n+1;
+    end % for ii
+    imData.frames = frames;
 
     fclose(fid);
-
 
 end
