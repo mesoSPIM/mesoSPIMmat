@@ -66,12 +66,14 @@ function imData = rawReader(fname,frames)
         fseek(fid,0,'bof');
         fprintf('Reading %d frames\n',nFrames)
         frames = 1:nFrames;
+
+        if nFrames~=imData.z_planes
+            fprintf('Found %d frames but metaData reports %d frames\n',...
+                nFrames, imData.z_planes)
+        end
     end
 
-    if nFrames~=imData.z_planes
-        fprintf('Found %d frames but metaData reports %d franes\n',...
-            nFrames, imData.z_planes)
-    end
+
 
     imData.imStack = zeros([2048,2048,length(frames)], 'uint16');
     n=1;

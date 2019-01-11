@@ -39,7 +39,7 @@ function metaData = metaDataReader(fname)
 
 
     fid = fopen(fname,'r');
-    tline = fgetl(fid);
+
     currentSubStructName=[];
 
     while ~feof(fid)
@@ -49,7 +49,7 @@ function metaData = metaDataReader(fname)
         end
 
         % Parse the line
-        tok=regexp(tline,'\[(.*)\](.*)','tokens');
+        tok=regexp(tline,'\[(.*)\] ?(.*)','tokens');
         tok=tok{1};
 
         if isempty(tok{2}) || strcmp(tok{2},' ')
@@ -87,8 +87,6 @@ end %fixDirtyFieldName
 
 function var = mungeVariable(var)
     % Convert numbers to numerics and leave the rest as strings
-
-    var = regexprep(var,'^ *',''); % remove leading white space
 
     if isempty(str2num(var))
         return
