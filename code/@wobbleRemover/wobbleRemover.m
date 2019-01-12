@@ -65,8 +65,9 @@ classdef wobbleRemover < handle
             % W.wavelength %shouldn't need much tweaking
             %
             % When you're happy you can save the data
-            % W.saveData %Creates a new file
-            % W.saveData(true) %Over-write original
+            % W.saveData %Creates a new file with "_DEWOBBLE" appended to the name
+            % W.saveData(true) %Over-write original (DANGEROUS!)
+            %
             %
             % Rob Campbell - SWC 2019
 
@@ -209,7 +210,14 @@ classdef wobbleRemover < handle
                 overwrite=false;
             end
 
-            mesotools.rawWriter(obj.imData)
+
+            fname = regexprep(obj.imData.Metadata_for_file,'.*/','');
+
+            if overwrite==false
+                fname = [fname,'_DEWOBBLE'];
+            end
+
+            mesotools.rawWriter(obj.imData, fname)
 
             % If we replaced the data, the wobble params must be good so write them to disk
             obj.writeWobbleParams 

@@ -23,6 +23,9 @@ function imData = rawReader(fname,frames)
     % >> imagesc(IM.imStack(:,:,3)); %display frame 100
     %
     % Rob Campbell - SWC 2019
+    %
+    % See also: mesotools.rawWriter
+
 
     imData=[];
 
@@ -55,14 +58,15 @@ function imData = rawReader(fname,frames)
     imData = mesotools.metaDataReader(regexprep(fname,'\..*',''));
 
 
-    pixelsPerFrame = 2048^2; % HARD CODE FOR NOW
+    frameSize=2048;
+    pixelsPerFrame = frameSize^2; % HARD CODE FOR NOW
 
     fid = fopen(fname,'r','ieee-le');
 
     if frames==inf
         % Find out how many frames there are in the file:
         fseek(fid,0,'eof');
-        nFrames = ftell(fid)/((2048^2)*2);
+        nFrames = ftell(fid)/((frameSize^2)*2);
         fseek(fid,0,'bof');
         fprintf('Reading %d frames\n',nFrames)
         frames = 1:nFrames;
@@ -75,13 +79,19 @@ function imData = rawReader(fname,frames)
 
 
 
-    imData.imStack = zeros([2048,2048,length(frames)], 'uint16');
+    imData.imStack = zeros([frameSize,frameSize,length(frames)], 'uint16');
     n=1;
     for ii=1:length(frames)
         thisPos = frames(ii)-1; %because fseek is zero-indexed
         startPoint = thisPos * pixelsPerFrame * 2; %because there are 2 bytes per 16 bit int
         fseek(fid,startPoint,'bof');
-        imData.imStack(:,:,n) = reshape(fread(fid,pixelsPerFrame,'uint16'),[2048,2048]);
+        tmp = fread(fid,pixelsPerFrame,'uint16');
+        if length(tmp)<frameSize^2
+            fprintf('Expected %d data points but read only %d from file %s.\n', ...
+                frameSize^2, length(tmp), fname);
+            continue
+        end
+        imData.imStack(:,:,n) = reshape(tmp,[frameSize,frameSize]);
         n=n+1;
     end % for ii
     imData.frames = frames;
