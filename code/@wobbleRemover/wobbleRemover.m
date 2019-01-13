@@ -177,6 +177,7 @@ classdef wobbleRemover < handle
             obj.wobbleParamGUI = figure;
             obj.wobbleParamGUI.CloseRequestFcn = @obj.figClose; %Closing figure deletes object
             obj.wobbleParamGUI.Name='wobble parameters';
+            obj.wobbleParamGUI.Resize = 'off';
             obj.wobbleParamGUI.MenuBar = 'none';
             figWidth=400;
             obj.wobbleParamGUI.Position(3)=figWidth;
@@ -185,26 +186,27 @@ classdef wobbleRemover < handle
 
 
             % build the sliders
-            obj.wobbleParamGUI.UserData.phaseSlider = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'slider','Position',[30,54,figWidth-30,23],...
-              'value', obj.phase, 'min',0, 'max', 2.15*pi);
-            obj.wobbleParamGUI.UserData.phaseText = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'Text','Position',[3,54,27,25],...
-                'String', sprintf('%0.2f',obj.phase));
+            sliderL=35;
+            obj.wobbleParamGUI.UserData.phaseSlider = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'slider','Position',[sliderL,54,figWidth-35,23],...
+              'value', obj.phase, 'min',-pi-1, 'max', pi+1, 'SliderStep', [0.0005,0.05]);
+            obj.wobbleParamGUI.UserData.phaseText = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'Text','Position',[3,53,sliderL-2,30],...
+                'String', sprintf('%0.3f',obj.phase));
 
-           obj.wobbleParamGUI.UserData.wavelengthSlider = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'slider','Position',[30,29,figWidth-30,23],...
+           obj.wobbleParamGUI.UserData.wavelengthSlider = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'slider','Position',[sliderL,29,figWidth-35,23],...
               'value', obj.wavelength, 'min',obj.wavelength-50, 'max', obj.wavelength+50);
-            obj.wobbleParamGUI.UserData.wavelengthText = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'Text','Position',[3,29,27,25],...
+            obj.wobbleParamGUI.UserData.wavelengthText = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'Text','Position',[3,29,sliderL-2,25],...
                 'String', sprintf('%d',obj.wavelength));
 
-            obj.wobbleParamGUI.UserData.amplitudeSlider = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'slider','Position',[30,4,figWidth-30,23],...
-              'value', obj.amplitude, 'min',0, 'max', 40);
-            obj.wobbleParamGUI.UserData.amplitudeText = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'Text','Position',[3,4,27,25],...
-                'String', sprintf('%0.1f',obj.amplitude));
+            obj.wobbleParamGUI.UserData.amplitudeSlider = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'slider','Position',[sliderL,4,figWidth-35,23],...
+              'value', obj.amplitude, 'min',0, 'max', 40, 'SliderStep', [0.0015,0.05]);
+            obj.wobbleParamGUI.UserData.amplitudeText = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'Text','Position',[3,4,sliderL-2,25],...
+                'String', sprintf('%0.2f',obj.amplitude));
 
  
             % Set up "pre-set" listeners so the plots update during slider action, not after
-            obj.listeners{end+1} = addlistener(obj.wobbleParamGUI.UserData.phaseSlider, 'Value', 'PreSet',@obj.updateFromGUI);
-            obj.listeners{end+1} = addlistener(obj.wobbleParamGUI.UserData.amplitudeSlider, 'Value', 'PreSet',@obj.updateFromGUI);
-            obj.listeners{end+1} = addlistener(obj.wobbleParamGUI.UserData.wavelengthSlider, 'Value', 'PreSet',@obj.updateFromGUI);
+            obj.listeners{end+1} = addlistener(obj.wobbleParamGUI.UserData.phaseSlider, 'Value', 'PreSet',@obj.updatePhaseFromGUI);
+            obj.listeners{end+1} = addlistener(obj.wobbleParamGUI.UserData.amplitudeSlider, 'Value', 'PreSet',@obj.updateAmplitudeFromGUI);
+            obj.listeners{end+1} = addlistener(obj.wobbleParamGUI.UserData.wavelengthSlider, 'Value', 'PreSet',@obj.updateWavelengthFromGUI);
         end % wobbleRemover
 
 
@@ -251,18 +253,21 @@ classdef wobbleRemover < handle
     % The following house-keeping methods are hidden from the user
     methods (Hidden)
 
-        function updateFromGUI(obj,~,~)
-            % This callback function runs whenever any of the GUI wobble sliders are updated 
+        function updatePhaseFromGUI(obj,~,~)
             obj.phase=obj.wobbleParamGUI.UserData.phaseSlider.Value;
-            obj.wobbleParamGUI.UserData.phaseText.String = sprintf('%0.2f',obj.phase);
+            obj.wobbleParamGUI.UserData.phaseText.String = sprintf('%0.3f',obj.phase);
+        end
 
-
+        function updateAmplitudeFromGUI(obj,~,~)
             obj.amplitude=obj.wobbleParamGUI.UserData.amplitudeSlider.Value;
-            obj.wobbleParamGUI.UserData.amplitudeText.String = sprintf('%0.1f',obj.amplitude);
+            obj.wobbleParamGUI.UserData.amplitudeText.String = sprintf('%0.2f',obj.amplitude);
+        end
 
+        function updateWavelengthFromGUI(obj,~,~)
             obj.wavelength=round(obj.wobbleParamGUI.UserData.wavelengthSlider.Value);
             obj.wobbleParamGUI.UserData.wavelengthText.String = sprintf('%d',obj.wavelength);
         end
+
 
         function toggleWobbleParamListeners(obj,enableDisableBool)
             % Used to disable wobble param listeners before the parameters are updated from disk

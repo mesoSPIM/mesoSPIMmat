@@ -35,8 +35,7 @@ You can choose a different plane to view by changing the value of the `slicePlan
 >> W.slicePlane=300;
 ```
 
-Similarly, you can alter amplitude, phase, or wavelength of the modeled wobble by editing these fields:
-
+You can alter amplitude, phase, or wavelength with the sliders or by modifying the following fields:
 ```
 W.amplitude  % Currently in pixels (see below)
 W.phase      % With respect to z=0
@@ -50,8 +49,9 @@ When you're happy you can save the data:
 >> W.saveData(true)Over-write original (DANGEROUS!)
 ```
 
-### Coming soon
-* GUI sliders to select image plane and alter parameters
+Running the tool with no input arguments will bring up a basic demo dataset. 
+You will notice by playing with this that it's very hard to find the correct parameters manually. 
+So further work is needed to come up with ways to derive the parameters automatically, to assist in the search, or to constrain them substantially somehow.
 
 
 ### Known issues
