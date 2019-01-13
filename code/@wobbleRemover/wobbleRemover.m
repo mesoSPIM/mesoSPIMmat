@@ -1,9 +1,10 @@
 classdef wobbleRemover < handle
 
     properties (SetObservable)
-        phase=0 % Phase of the wobble with respect to the zero of the stage
+        phase=0 % Phase of the wobble with respect to the start of the stack
         amplitude=20 % amplitude in microns
         wavelength=500
+        wobbleOffset=0; %Phase was calculated with respect to this
 
         % Images taken from the re-slice that is parallel to the optical table
         originalImage
@@ -115,6 +116,8 @@ classdef wobbleRemover < handle
 
             % Set up the figure window
             obj.hFig = clf;
+            obj.hFig.Name='wobbleRemover';
+
             obj.hOrigAx = subplot(1,2,1);
 
             obj.hOrigIm = imagesc(obj.originalImage);
@@ -203,7 +206,9 @@ classdef wobbleRemover < handle
                 flipped=false;
             end
 
+            %Use a relative zero but store the offset as it will be useful in future. 
             zVals = zRange(1) : obj.imData.z_stepsize : (zRange(2)-obj.imData.z_stepsize);
+            zVals = zVals-obj.wobbleOffset;
 
             if flipped
                 zVals = fliplr(zVals);
@@ -214,7 +219,8 @@ classdef wobbleRemover < handle
                     length(zVals),size(obj.imData.imStack,3))
             end
 
-             % The values in Z in this image (i.e. the stage coords for each plane)
+            % The values in Z in this image (i.e. the stage coords for each plane)
+
             waveForm = sin( obj.phase + (((zVals/obj.wavelength)) *2*pi) );
             MICRONS_PER_PIXEL = 1;
             waveForm = (waveForm / MICRONS_PER_PIXEL) * (obj.amplitude/2);
@@ -262,6 +268,7 @@ classdef wobbleRemover < handle
             lastWobble.phase = obj.phase;
             lastWobble.amplitude = obj.amplitude;
             lastWobble.wavelength = obj.wavelength;
+            lastWobble.offset = min(obj.wobbleModel.zVals);
 
             SETTINGS_DIR = strrep(which('wobbleRemover'), '@wobbleRemover/wobbleRemover.m','settingsWobbleRemover');
             fname = fullfile(SETTINGS_DIR,obj.paramsFname);
@@ -338,6 +345,19 @@ classdef wobbleRemover < handle
 
     end % methods
 
+
+    % Getters/setters
+    methods
+        function set.slicePlane(obj,inArg)
+            if inArg<1 
+                fprintf('Value out of range for imStack\n')
+            elseif inArg>size(obj.imData.imStack,3)
+                fprintf('Value out of range for imStack, which has %d planes\n',size(obj.imData.imStack,3))                
+            else
+                obj.slicePlane = inArg;
+            end
+        end % set.slicePlane
+    end %getters/setters
 
 end %classdef
 

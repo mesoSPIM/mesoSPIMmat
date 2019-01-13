@@ -6,7 +6,7 @@ function imData = generateTestingImage(~)
     imData = mesotools.metaDataReader('example.raw_meta.txt');
 
     % Generate a data volume
-    dataSize = 2^7;
+    dataSize = 2^6;
     imData.imStack = repmat(peaks(dataSize),[1,1,dataSize]);
     for ii=1:size(imData.imStack,3)
         imData.imStack(:,:,ii) = circshift(imData.imStack(:,:,ii),ii);
