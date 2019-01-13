@@ -4,7 +4,7 @@ classdef wobbleRemover < handle
         phase=0 % Phase of the wobble with respect to the start of the stack
         amplitude=20 % amplitude in microns
         wavelength=500
-        wobbleOffset=0; %Phase was calculated with respect to this
+        wobbleOffset=0; %Phase was calculated with respect to this TODO: not working yet
 
         % Images taken from the re-slice that is parallel to the optical table
         originalImage
@@ -26,6 +26,7 @@ classdef wobbleRemover < handle
 
     properties (Hidden,SetObservable)
         wobbleModel %This is the sine wave that models the wobble
+        wobbleParamGUI
     end % (Hidden,SetObservable)
 
     properties (Hidden)
@@ -114,6 +115,15 @@ classdef wobbleRemover < handle
             obj.correctedImage = squeeze(obj.imData.imStack(:,obj.slicePlane,:));
 
 
+            % First find and close any existing instances
+            f=findobj('Name','wobbleRemover');
+            if ~isempty(f)
+                delete(f)
+            end
+            f=findobj('Name','wobble parameters');
+            if ~isempty(f)
+                delete(f)
+            end
             % Set up the figure window
             obj.hFig = clf;
             obj.hFig.Name='wobbleRemover';
@@ -166,19 +176,64 @@ classdef wobbleRemover < handle
                 obj.correctStack(true); %true to not apply the inverse of the wobble
                 obj.updatePlottedPlanes
             end
+
+            % Add a GUI to enable quick setting of the wobble parameters
+            obj.wobbleParamGUI = figure;
+            obj.wobbleParamGUI.Name='wobble parameters';
+            obj.wobbleParamGUI.MenuBar = 'none';
+            figWidth=400;
+            obj.wobbleParamGUI.Position(3)=figWidth;
+            obj.wobbleParamGUI.Position(4)=100;
+            obj.wobbleParamGUI.Position(2) = obj.hFig.Position(2)-obj.wobbleParamGUI.Position(4)-25;
+
+
+            obj.wobbleParamGUI.UserData.phaseSlider = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'slider','Position',[30,54,figWidth-30,23],...
+              'value', obj.phase, 'min',0, 'max', 2.15*pi);
+            obj.wobbleParamGUI.UserData.phaseText = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'Text','Position',[3,54,27,25],...
+                'String', sprintf('%0.2f',obj.phase));
+
+           obj.wobbleParamGUI.UserData.wavelengthSlider = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'slider','Position',[30,29,figWidth-30,23],...
+              'value', obj.wavelength, 'min',obj.wavelength-50, 'max', obj.wavelength+50);
+            obj.wobbleParamGUI.UserData.wavelengthText = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'Text','Position',[3,29,27,25],...
+                'String', sprintf('%d',obj.wavelength));
+
+            obj.wobbleParamGUI.UserData.amplitudeSlider = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'slider','Position',[30,4,figWidth-30,23],...
+              'value', obj.amplitude, 'min',0, 'max', 40);
+            obj.wobbleParamGUI.UserData.amplitudeText = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'Text','Position',[3,4,27,25],...
+                'String', sprintf('%0.1f',obj.amplitude));
+
+
+ 
+
+            obj.listeners{end+1} = addlistener(obj.wobbleParamGUI.UserData.phaseSlider, 'Value', 'PreSet',@obj.updateFromGUI);
+            obj.listeners{end+1} = addlistener(obj.wobbleParamGUI.UserData.amplitudeSlider, 'Value', 'PreSet',@obj.updateFromGUI);
+            obj.listeners{end+1} = addlistener(obj.wobbleParamGUI.UserData.wavelengthSlider, 'Value', 'PreSet',@obj.updateFromGUI);
         end % wobbleRemover
 
         %DESTRUCTOR
         function delete(obj)
+            delete(obj.wobbleParamGUI)
+            delete(obj.hFig) %close figure
             cellfun(@delete,obj.listeners)
         end % delete
 
         function figClose(obj,~,~)
-            delete(obj.hFig) %close figure
             obj.delete %class destructor
         end
 
 
+        function updateFromGUI(obj,~,~)
+            obj.phase=obj.wobbleParamGUI.UserData.phaseSlider.Value;
+            obj.wobbleParamGUI.UserData.phaseText.String = sprintf('%0.2f',obj.phase);
+
+
+            obj.amplitude=obj.wobbleParamGUI.UserData.amplitudeSlider.Value;
+            obj.wobbleParamGUI.UserData.amplitudeText.String = sprintf('%0.1f',obj.amplitude);
+
+            obj.wavelength=round(obj.wobbleParamGUI.UserData.wavelengthSlider.Value);
+            obj.wobbleParamGUI.UserData.wavelengthText.String = sprintf('%d',obj.wavelength);
+
+        end
 
 
         function updatePlottedPlanes(obj,~,~)
@@ -189,7 +244,7 @@ classdef wobbleRemover < handle
         end
 
 
-        function toggelWobbleParamListeners(obj,enableDisableBool)
+        function toggleWobbleParamListeners(obj,enableDisableBool)
             % input arg should be true/false
             for ii=1:length(obj.wobbleParamListeners)
                 obj.wobbleParamListeners.Enabled = enableDisableBool;
@@ -208,7 +263,7 @@ classdef wobbleRemover < handle
 
             %Use a relative zero but store the offset as it will be useful in future. 
             zVals = zRange(1) : obj.imData.z_stepsize : (zRange(2)-obj.imData.z_stepsize);
-            zVals = zVals-obj.wobbleOffset;
+            zVals = zVals-min(zVals); %TODO- implement the offset properly so we can use different stacks
 
             if flipped
                 zVals = fliplr(zVals);
@@ -252,11 +307,11 @@ classdef wobbleRemover < handle
 
             load(fname)
 
-            obj.toggelWobbleParamListeners(false)
+            obj.toggleWobbleParamListeners(false)
             obj.phase=lastWobble.phase;
             obj.amplitude=lastWobble.amplitude;
 
-            obj.toggelWobbleParamListeners(true)
+            obj.toggleWobbleParamListeners(true)
             obj.wavelength=lastWobble.wavelength; %So this triggers make wobble model
         end
 
