@@ -30,7 +30,8 @@ classdef wobbleRemover < handle
     properties (Hidden)
         paramsFname = 'lastGoodWobbleParams.mat' %Last known good parameters are stored in this fname in the "settings" directory
         listeners = {}
-        wobbleParamListeners = {};
+        wobbleParamListeners = {}
+        simulatedMode=false
     end % (Hidden)
 
 
@@ -69,19 +70,42 @@ classdef wobbleRemover < handle
             % W.saveData(true) %Over-write original (DANGEROUS!)
             %
             %
+            % NOTE: run without input arguments for simulated mode. Used for delvelopment.
+            %
+            %
             % Rob Campbell - SWC 2019
+
+
+            if nargin<1
+                fprintf(' \nRUNNING WOBBLEREMOVER WITH DUMMY DATASET\n\n ')
+                obj.simulatedMode=true;
+
+                obj.imData  = obj.generateTestingImage;
+
+                % Make the artifact more obvious
+                obj.amplitude=10; 
+                obj.wavelength=250;
+
+            else
+                if ischar(fname)
+                    obj.imData = mesotools.rawReader(fname);
+                elseif isstruct(fname)
+                    obj.imData = fname;
+                elseif isempty(obj.imData)
+                    return
+                end
+            end
 
 
             % If fname is a file name, the stack is read. If it's a structure, it's treated as 
             % being the output of mesotools.rawReader
-            if ischar(fname)
-                obj.imStack = mesotools.rawReader(fname);
-            elseif isstruct(fname)
-                obj.imData = fname;
-            elseif isempty(obj.imData)
+
+
+            if size(obj.imData.imStack,3) ~= obj.imData.POSTION.z_planes
+                fprintf('Image stack seems to be missing frames. wobbleRemover will not proceed.\n')
+                delete(obj)
                 return
             end
-
 
 
             obj.slicePlane=round(size(obj.imData.imStack,1)/2); %TODO: choose more cleverly?
@@ -134,6 +158,11 @@ classdef wobbleRemover < handle
             obj.wobbleParamListeners{end+1} = addlistener(obj, 'phase', 'PostSet', @obj.makeWobbleModel);
             obj.wobbleParamListeners{end+1} = addlistener(obj, 'amplitude', 'PostSet', @obj.makeWobbleModel);
             obj.wobbleParamListeners{end+1} = addlistener(obj, 'wavelength', 'PostSet', @obj.makeWobbleModel);
+
+            if obj.simulatedMode
+                obj.correctStack(true); %true to not apply the inverse of the wobble
+                obj.updatePlottedPlanes
+            end
         end % wobbleRemover
 
         %DESTRUCTOR
@@ -173,9 +202,16 @@ classdef wobbleRemover < handle
             else
                 flipped=false;
             end
+
             zVals = zRange(1) : obj.imData.z_stepsize : (zRange(2)-obj.imData.z_stepsize);
+
             if flipped
                 zVals = fliplr(zVals);
+            end
+
+            if length(zVals) ~= size(obj.imData.imStack,3)
+                fprintf('ERROR: Wobble model has %d data points but there are %d z-planes in the dataset\n',...
+                    length(zVals),size(obj.imData.imStack,3))
             end
 
              % The values in Z in this image (i.e. the stage coords for each plane)
@@ -187,45 +223,19 @@ classdef wobbleRemover < handle
             obj.wobbleModel.wobble = waveForm;
             obj.wobbleModel.zVals = zVals;
 
-            obj.runImageCorrection 
+            obj.runImageCorrection
+            obj.updatePlottedPlanes
         end % makeWobbleLine
 
 
 
-        function correctStack(obj)
-            for ii=1:length(obj.wobbleModel.wobble)
-                tWobble = round(obj.wobbleModel.wobble(ii)) * -1;
-                obj.correctedImage(:,ii) = circshift(obj.originalImage(:,ii), tWobble);
-            end
-            % Use the current parameters to correct the full stack
-            obj.hCorrectedIm.CData = obj.correctedImage;
-        end
-
-        function saveData(obj,overwrite)
-            % Saves stack to disk (optionally replaces the original data with the corrected data)
-            % TODO - Also must note in the meta-data text file how the correction was done
-            % TODO - Also write to the file the current Git commit of wobbleRemover
-
-            if nargin<2
-                overwrite=false;
-            end
-
-
-            fname = regexprep(obj.imData.Metadata_for_file,'.*/','');
-
-            if overwrite==false
-                fname = [fname,'_DEWOBBLE'];
-            end
-
-            mesotools.rawWriter(obj.imData, fname)
-
-            % If we replaced the data, the wobble params must be good so write them to disk
-            obj.writeWobbleParams 
-        end
-
-
         function success=readWobbleParams(obj)
             success=false;
+
+            if obj.simulatedMode
+                success=true;
+                return
+            end
 
             % Find the settings directory
             SETTINGS_DIR = strrep(which('wobbleRemover'), '@wobbleRemover/wobbleRemover.m','settingsWobbleRemover');
@@ -246,6 +256,9 @@ classdef wobbleRemover < handle
 
         function writeWobbleParams(obj)
             % Writes current wobble parameters to a mat file for later re-use
+            if obj.simulatedMode
+                return
+            end
             lastWobble.phase = obj.phase;
             lastWobble.amplitude = obj.amplitude;
             lastWobble.wavelength = obj.wavelength;
@@ -272,9 +285,59 @@ classdef wobbleRemover < handle
                 obj.correctedImage(:,ii) = circshift(obj.originalImage(:,ii), tWobble);
             end
             % Use the current parameters to correct the full stack
+
             obj.hCorrectedIm.CData = obj.correctedImage;
         end % runImageCorrection
+
+
+        function correctStack(obj,reverseCorrect)
+            % Run the correction over the whole stack and replace data in RAM
+
+            % reverseCorrect is used for the simulated data mode
+
+            if nargin<2
+                reverseCorrect=false;
+            end
+
+            if reverseCorrect
+                scaleFactor = 1;
+            else
+                scaleFactor = -1;
+            end
+
+            for ii = 1:size(obj.imData.imStack,3)
+                tSlice = squeeze(obj.imData.imStack(:,:,ii));
+                tWobble = round(obj.wobbleModel.wobble(ii)) * scaleFactor;
+                obj.imData.imStack(:,:,ii) = circshift(tSlice, tWobble);
+            end
+
+        end % correctStack
+
+
+        function saveData(obj,overwrite)
+            % Saves stack to disk (optionally replaces the original data with the corrected data)
+            % TODO - Also must note in the meta-data text file how the correction was done
+            % TODO - Also write to the file the current Git commit of wobbleRemover
+
+            if nargin<2
+                overwrite=false;
+            end
+
+
+            fname = regexprep(obj.imData.Metadata_for_file,'.*/','');
+
+            if overwrite==false
+                fname = [fname,'_DEWOBBLE'];
+            end
+
+            mesotools.rawWriter(obj.imData, fname)
+
+            % If we replaced the data, the wobble params must be good so write them to disk
+            obj.writeWobbleParams 
+        end
+
     end % methods
 
 
 end %classdef
+

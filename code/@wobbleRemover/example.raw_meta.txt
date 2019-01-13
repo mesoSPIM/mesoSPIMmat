@@ -1,0 +1,38 @@
+[Metadata for file] D://thalamus.raw
+[z_stepsize] 1.00
+[z_planes] 1100.00
+
+[CFG]
+[Laser] 561 nm
+[Intensity (%)] 24
+[Zoom] 1x
+[Pixelsize_in_um] 6.55
+[Filter] Empty-Alignment
+[Shutter] Left
+
+[POSTION]
+[x_pos] 25100.03
+[y_pos] 52987.74
+[f_pos] 71214.60
+[z_start] 22009.29
+[z_end] 20909.09
+[z_stepsize] 1
+[z_planes] 1100
+
+[ETL PARAMETERS]
+[ETL_CFG_File] config/etl_parameters/ETL-parameters.csv
+[etl_l_offset] 1.40
+[etl_l_amplitude] 0.58
+[etl_r_offset] 0
+[etl_r_amplitude] 0
+
+[GALVO PARAMETERS]
+[galvo_l_frequency] 99.90
+[galvo_l_amplitude] 6
+[galvo_l_offset] 0
+[galvo_r_amplitude] 6
+[galvo_r_offset] 0
+
+[CAMERA PARAMETERS]
+[camera_exposure] 0.02
+[camera_line_interval] 7.50e-05
