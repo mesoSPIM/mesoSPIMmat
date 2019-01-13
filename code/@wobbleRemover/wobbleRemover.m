@@ -1,40 +1,48 @@
 classdef wobbleRemover < handle
+    % wobbleRemover is a class for interactively getting rid of parasitic X motion artifacts in mesoSPIM z-stacks
+
+
+    % TODO: if the other re-slice also shows oscillation then this would mean that the 
+    %       oscillation is some sort of squashed helix and we will need to correct it in both
+    %       dimensions. 
+
+
 
     properties (SetObservable)
-        phase=0 % Phase of the wobble with respect to the start of the stack
-        amplitude=20 % amplitude in microns
-        wavelength=500
-        wobbleOffset=0; %Phase was calculated with respect to this TODO: not working yet
+        % wobble model parameters
+        phase=0         % phase of the wobble with respect to the start of the stack
+        amplitude=20    % amplitude in microns %TODO: currently this is in pixels
+        wavelength=500  % wavelength of the oscillation in microns
+        wobbleOffset=0; % the start of the stack in z, so we will be able to apply the parameters across stacks
 
-        % Images taken from the re-slice that is parallel to the optical table
-        originalImage
-        correctedImage
-
-        slicePlane % Which plane to plot
+        slicePlane % The index of the plane to plot
     end % properties (SetObservable)
 
-    properties % properties
-        hFig
-        hWobble % The plot handle of the guide line to show the wobble we are modeling
-        hOrigAx % Axis of original image
-        hCorrectedAx % Axis of corrected image
-        hOrigIm % Handle to image object for original image
-        hCorrectedIm  % Handle to image object for corrected image
 
-        imData % The full stack and associated meta-data
-    end
+    properties
+        hFig
+        hOrigAx      % Axis of original image 
+        hCorrectedAx % Axis of corrected image
+        hOrigIm      % Handle to image object for original image
+        hCorrectedIm % Handle to image object for corrected image
+        hWobble     %  Handle of the guide line showing the wobble we are modeling
+
+        imData      % The full stack and associated meta-data (see mesotools.rawReader)
+    end % properties
+
 
     properties (Hidden,SetObservable)
         wobbleModel %This is the sine wave that models the wobble
         wobbleParamGUI
-    end % (Hidden,SetObservable)
+    end % properties (Hidden,SetObservable)
+
 
     properties (Hidden)
         paramsFname = 'lastGoodWobbleParams.mat' %Last known good parameters are stored in this fname in the "settings" directory
-        listeners = {}
-        wobbleParamListeners = {}
-        simulatedMode=false
-    end % (Hidden)
+        listeners = {}             % cell array containing various listeners for making the GUI work
+        wobbleParamListeners = {}  % listeners for updating plot elements when a wobble parameter is modified
+        simulatedMode=false        % true if running in simulated mode
+    end % properties (Hidden)
 
 
 
@@ -72,13 +80,15 @@ classdef wobbleRemover < handle
             % W.saveData(true) %Over-write original (DANGEROUS!)
             %
             %
-            % NOTE: run without input arguments for simulated mode. Used for delvelopment.
+            % NOTE: run without input arguments for simulated mode. Used for development.
             %
             %
             % Rob Campbell - SWC 2019
 
 
+            % handle input arguments
             if nargin<1
+                % Set up simulated mode if run without input arguments
                 fprintf(' \nRUNNING WOBBLEREMOVER WITH DUMMY DATASET\n\n ')
                 obj.simulatedMode=true;
 
@@ -89,6 +99,9 @@ classdef wobbleRemover < handle
                 obj.wavelength=250;
 
             else
+                % Either read from file name or run with supplied data:
+                % If fname is a file name, the stack is read. If it's a structure, it's treated as 
+                % being the output of mesotools.rawReader
                 if ischar(fname)
                     obj.imData = mesotools.rawReader(fname);
                 elseif isstruct(fname)
@@ -99,10 +112,7 @@ classdef wobbleRemover < handle
             end
 
 
-            % If fname is a file name, the stack is read. If it's a structure, it's treated as 
-            % being the output of mesotools.rawReader
-
-
+            % We may get unexpected behavior if the user has loaded a subset of frames, so block this
             if size(obj.imData.imStack,3) ~= obj.imData.POSTION.z_planes
                 fprintf('Image stack seems to be missing frames. wobbleRemover will not proceed.\n')
                 delete(obj)
@@ -110,27 +120,18 @@ classdef wobbleRemover < handle
             end
 
 
-            obj.slicePlane=round(size(obj.imData.imStack,1)/2); %TODO: choose more cleverly?
-            obj.originalImage = squeeze(obj.imData.imStack(:,obj.slicePlane,:));
-            obj.correctedImage = squeeze(obj.imData.imStack(:,obj.slicePlane,:));
+            % Prepare to set up the figure window: close any existing wobbleRemover windows
+            delete(findobj('Name','wobbleRemover'))
+            delete(findobj('Name','wobble parameters'))
 
 
-            % First find and close any existing instances
-            f=findobj('Name','wobbleRemover');
-            if ~isempty(f)
-                delete(f)
-            end
-            f=findobj('Name','wobble parameters');
-            if ~isempty(f)
-                delete(f)
-            end
             % Set up the figure window
             obj.hFig = clf;
             obj.hFig.Name='wobbleRemover';
+            obj.slicePlane=round(size(obj.imData.imStack,1)/2);
 
             obj.hOrigAx = subplot(1,2,1);
-
-            obj.hOrigIm = imagesc(obj.originalImage);
+            obj.hOrigIm = imagesc( squeeze(obj.imData.imStack(:,obj.slicePlane,:)) );
             hold on
             obj.hWobble = plot(nan,nan,'-r');
             obj.hOrigAx = gca;
@@ -138,7 +139,7 @@ classdef wobbleRemover < handle
             axis off
 
             obj.hCorrectedAx = subplot(1,2,2);
-            obj.hCorrectedIm = imagesc(obj.correctedImage);
+            obj.hCorrectedIm = imagesc( squeeze(obj.imData.imStack(:,obj.slicePlane,:)) );
             obj.hCorrectedAx = gca;
             title('Corrected image')
             axis off
@@ -148,21 +149,13 @@ classdef wobbleRemover < handle
             obj.hFig.CloseRequestFcn = @obj.figClose; %Closing figure deletes object
 
 
-            % obj.plotWobbleLine should run when wobbleModel updates
-            % obj.runImageCorrection should run when wobbleModel updates
-            % obj.makeWobbleModel should run when phase, amplitude, or wavelength are changed (implement as method to enable/disable)
-
-            % The correctedImage plot should update whenever the corrected data change
-
-
-            obj.makeWobbleModel %Model wobble as a sine wave
-
             if obj.readWobbleParams %If the file is there then we must have successfully ran the correction
-                %The model will update and make the line
+                %Pass - the model will update and make the line
             else
                 % Force making the line with the defaults present in the wobbleRemover properties
                 obj.makeWobbleModel %Model wobble as a sine wave
             end
+
 
             % Set up listeners
             obj.listeners{end+1} = addlistener(obj, 'slicePlane', 'PostSet', @obj.updatePlottedPlanes);
@@ -172,13 +165,17 @@ classdef wobbleRemover < handle
             obj.wobbleParamListeners{end+1} = addlistener(obj, 'amplitude', 'PostSet', @obj.makeWobbleModel);
             obj.wobbleParamListeners{end+1} = addlistener(obj, 'wavelength', 'PostSet', @obj.makeWobbleModel);
 
+
             if obj.simulatedMode
+                % We are in simulated mode then we want to apply a wobble *to* the original stack
                 obj.correctStack(true); %true to not apply the inverse of the wobble
                 obj.updatePlottedPlanes
             end
 
-            % Add a GUI to enable quick setting of the wobble parameters
+
+            % Add an extra GUI window containing sliders so we can easily set the wobble parameters
             obj.wobbleParamGUI = figure;
+            obj.wobbleParamGUI.CloseRequestFcn = @obj.figClose; %Closing figure deletes object
             obj.wobbleParamGUI.Name='wobble parameters';
             obj.wobbleParamGUI.MenuBar = 'none';
             figWidth=400;
@@ -187,6 +184,7 @@ classdef wobbleRemover < handle
             obj.wobbleParamGUI.Position(2) = obj.hFig.Position(2)-obj.wobbleParamGUI.Position(4)-25;
 
 
+            % build the sliders
             obj.wobbleParamGUI.UserData.phaseSlider = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'slider','Position',[30,54,figWidth-30,23],...
               'value', obj.phase, 'min',0, 'max', 2.15*pi);
             obj.wobbleParamGUI.UserData.phaseText = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'Text','Position',[3,54,27,25],...
@@ -202,27 +200,59 @@ classdef wobbleRemover < handle
             obj.wobbleParamGUI.UserData.amplitudeText = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'Text','Position',[3,4,27,25],...
                 'String', sprintf('%0.1f',obj.amplitude));
 
-
  
-
+            % Set up "pre-set" listeners so the plots update during slider action, not after
             obj.listeners{end+1} = addlistener(obj.wobbleParamGUI.UserData.phaseSlider, 'Value', 'PreSet',@obj.updateFromGUI);
             obj.listeners{end+1} = addlistener(obj.wobbleParamGUI.UserData.amplitudeSlider, 'Value', 'PreSet',@obj.updateFromGUI);
             obj.listeners{end+1} = addlistener(obj.wobbleParamGUI.UserData.wavelengthSlider, 'Value', 'PreSet',@obj.updateFromGUI);
         end % wobbleRemover
 
+
         %DESTRUCTOR
         function delete(obj)
+            cellfun(@delete,obj.listeners)
+            cellfun(@delete,obj.wobbleParamListeners)
+
             delete(obj.wobbleParamGUI)
             delete(obj.hFig) %close figure
-            cellfun(@delete,obj.listeners)
         end % delete
 
-        function figClose(obj,~,~)
-            obj.delete %class destructor
+
+
+
+        % ------------------------------------------------------------------
+        function updatePlottedPlanes(obj,~,~)
+            % Refresh the original image and re-run the correction and plot the corrected image
+            obj.hOrigIm.CData = squeeze(obj.imData.imStack(:,obj.slicePlane,:));
+            obj.plotWobbleLine
+            obj.runImageCorrection;
         end
 
 
+        function plotWobbleLine(obj,~,~)
+            % Runs when wobble line changes
+            obj.hWobble.YData = obj.wobbleModel.wobble + size(obj.hOrigIm.CData,1)/2;
+            obj.hWobble.XData = 1:length(obj.wobbleModel.zVals);
+        end % plotWobbleLine
+
+
+        function runImageCorrection(obj,~,~)
+            % Run correction on the single displayed slice
+
+            for ii=1:length(obj.wobbleModel.wobble)
+                tWobble = round(obj.wobbleModel.wobble(ii)) * -1;
+                obj.hCorrectedIm.CData(:,ii) = circshift(obj.hOrigIm.CData(:,ii), tWobble);
+            end
+        end % runImageCorrection
+
+    end % main methods block
+
+
+    % The following house-keeping methods are hidden from the user
+    methods (Hidden)
+
         function updateFromGUI(obj,~,~)
+            % This callback function runs whenever any of the GUI wobble sliders are updated 
             obj.phase=obj.wobbleParamGUI.UserData.phaseSlider.Value;
             obj.wobbleParamGUI.UserData.phaseText.String = sprintf('%0.2f',obj.phase);
 
@@ -232,173 +262,23 @@ classdef wobbleRemover < handle
 
             obj.wavelength=round(obj.wobbleParamGUI.UserData.wavelengthSlider.Value);
             obj.wobbleParamGUI.UserData.wavelengthText.String = sprintf('%d',obj.wavelength);
-
         end
-
-
-        function updatePlottedPlanes(obj,~,~)
-            obj.originalImage = squeeze(obj.imData.imStack(:,obj.slicePlane,:));
-            obj.hOrigIm.CData = obj.originalImage;
-            obj.plotWobbleLine
-            obj.runImageCorrection;
-        end
-
 
         function toggleWobbleParamListeners(obj,enableDisableBool)
+            % Used to disable wobble param listeners before the parameters are updated from disk
+            % Probably this is overkill but let's be near for now
             % input arg should be true/false
             for ii=1:length(obj.wobbleParamListeners)
                 obj.wobbleParamListeners.Enabled = enableDisableBool;
             end
         end
 
-
-        function makeWobbleModel(obj,~,~)
-            zRange = [obj.imData.POSTION.z_start, obj.imData.POSTION.z_end];
-            if zRange(1)>zRange(2)
-                zRange=fliplr(zRange);
-                flipped=true;
-            else
-                flipped=false;
-            end
-
-            %Use a relative zero but store the offset as it will be useful in future. 
-            zVals = zRange(1) : obj.imData.z_stepsize : (zRange(2)-obj.imData.z_stepsize);
-            zVals = zVals-min(zVals); %TODO- implement the offset properly so we can use different stacks
-
-            if flipped
-                zVals = fliplr(zVals);
-            end
-
-            if length(zVals) ~= size(obj.imData.imStack,3)
-                fprintf('ERROR: Wobble model has %d data points but there are %d z-planes in the dataset\n',...
-                    length(zVals),size(obj.imData.imStack,3))
-            end
-
-            % The values in Z in this image (i.e. the stage coords for each plane)
-
-            waveForm = sin( obj.phase + (((zVals/obj.wavelength)) *2*pi) );
-            MICRONS_PER_PIXEL = 1;
-            waveForm = (waveForm / MICRONS_PER_PIXEL) * (obj.amplitude/2);
-
-            % We now have a scaled waveform we can overlay
-            obj.wobbleModel.wobble = waveForm;
-            obj.wobbleModel.zVals = zVals;
-
-            obj.runImageCorrection
-            obj.updatePlottedPlanes
-        end % makeWobbleLine
-
-
-
-        function success=readWobbleParams(obj)
-            success=false;
-
-            if obj.simulatedMode
-                success=true;
-                return
-            end
-
-            % Find the settings directory
-            SETTINGS_DIR = strrep(which('wobbleRemover'), '@wobbleRemover/wobbleRemover.m','settingsWobbleRemover');
-            fname = fullfile(SETTINGS_DIR,obj.paramsFname);
-            if ~exist(fname)
-                return
-            end
-
-            load(fname)
-
-            obj.toggleWobbleParamListeners(false)
-            obj.phase=lastWobble.phase;
-            obj.amplitude=lastWobble.amplitude;
-
-            obj.toggleWobbleParamListeners(true)
-            obj.wavelength=lastWobble.wavelength; %So this triggers make wobble model
+        function figClose(obj,~,~)
+            % Figure close function: figures are destroyed in the destructor
+            obj.delete %class destructor
         end
 
-        function writeWobbleParams(obj)
-            % Writes current wobble parameters to a mat file for later re-use
-            if obj.simulatedMode
-                return
-            end
-            lastWobble.phase = obj.phase;
-            lastWobble.amplitude = obj.amplitude;
-            lastWobble.wavelength = obj.wavelength;
-            lastWobble.offset = min(obj.wobbleModel.zVals);
-
-            SETTINGS_DIR = strrep(which('wobbleRemover'), '@wobbleRemover/wobbleRemover.m','settingsWobbleRemover');
-            fname = fullfile(SETTINGS_DIR,obj.paramsFname);
-            save(fname,'lastWobble')
-        end
-
-
-        % The following are listeners that run when certain properties are updated
-        function plotWobbleLine(obj,~,~)
-            % Runs when wobble line changes
-            obj.hWobble.YData = obj.wobbleModel.wobble + size(obj.originalImage,1)/2;
-            obj.hWobble.XData = 1:length(obj.wobbleModel.zVals);
-        end % plotWobbleLine
-
-
-        function runImageCorrection(obj,~,~)
-            % Run correction on the single slice in obj.originalImage
-            %RUN CORRECTION
-            for ii=1:length(obj.wobbleModel.wobble)
-                tWobble = round(obj.wobbleModel.wobble(ii)) * -1;
-                obj.correctedImage(:,ii) = circshift(obj.originalImage(:,ii), tWobble);
-            end
-            % Use the current parameters to correct the full stack
-
-            obj.hCorrectedIm.CData = obj.correctedImage;
-        end % runImageCorrection
-
-
-        function correctStack(obj,reverseCorrect)
-            % Run the correction over the whole stack and replace data in RAM
-
-            % reverseCorrect is used for the simulated data mode
-
-            if nargin<2
-                reverseCorrect=false;
-            end
-
-            if reverseCorrect
-                scaleFactor = 1;
-            else
-                scaleFactor = -1;
-            end
-
-            for ii = 1:size(obj.imData.imStack,3)
-                tSlice = squeeze(obj.imData.imStack(:,:,ii));
-                tWobble = round(obj.wobbleModel.wobble(ii)) * scaleFactor;
-                obj.imData.imStack(:,:,ii) = circshift(tSlice, tWobble);
-            end
-
-        end % correctStack
-
-
-        function saveData(obj,overwrite)
-            % Saves stack to disk (optionally replaces the original data with the corrected data)
-            % TODO - Also must note in the meta-data text file how the correction was done
-            % TODO - Also write to the file the current Git commit of wobbleRemover
-
-            if nargin<2
-                overwrite=false;
-            end
-
-
-            fname = regexprep(obj.imData.Metadata_for_file,'.*/','');
-
-            if overwrite==false
-                fname = [fname,'_DEWOBBLE'];
-            end
-
-            mesotools.rawWriter(obj.imData, fname)
-
-            % If we replaced the data, the wobble params must be good so write them to disk
-            obj.writeWobbleParams 
-        end
-
-    end % methods
+    end % hidden house-keeping methods
 
 
     % Getters/setters
