@@ -2,12 +2,12 @@
 
 This repository contains tools for handling mesoSPIM data in MATLAB.
 
-### Contents
+## Contents
 * raw data file reader
 * bare-bones de-wobbler for parasitic motion of z-stage
 
 
-### De-wobbler
+## De-wobbler
 Some of the original mesoSPIMs have z-drives which translate side to side ("wobble") as they move in z. 
 This originates from play in the lead-screw and should have a period of 500 microns.
 The amplitude and phase will vary from system to system but should be consistent within a system from run to run. 
@@ -34,7 +34,6 @@ You can choose a different plane to view by changing the value of the `slicePlan
 % To view slice 300
 >> W.slicePlane=300;
 ```
-
 You can alter amplitude, phase, or wavelength with the sliders or by modifying the following fields:
 ```
 W.amplitude  % Currently in pixels (see below)
@@ -50,8 +49,15 @@ When you're happy you can save the data:
 ```
 
 Running the tool with no input arguments will bring up a basic demo dataset. 
-You will notice by playing with this that it's very hard to find the correct parameters manually. 
-So further work is needed to come up with ways to derive the parameters automatically, to assist in the search, or to constrain them substantially somehow.
+
+### Results
+The following two images were obtained from the same stack and illustrate the sort of improvement you can expect after about 5 minutes of tweaking. 
+There is still room for improvement, but it's vastly better than the raw data.
+The lightsheet was made very thick by adding a large offset to the ETL amplitude in order to amplify the effect of wobble from the Z stage (since it makes the same structure visible over a large number of z-planes). 
+<img src="https://github.com/mesoSPIM/mesoSPIMmat/wiki/images/wobble1.png" />
+<img src="https://github.com/mesoSPIM/mesoSPIMmat/wiki/images/wobble2.png" />
+
+Further work is likely needed to come up with ways to derive the parameters automatically, to assist in the search, or to constrain them substantially somehow.
 
 
 ### Known issues
