@@ -45,7 +45,7 @@ When you're happy you can save the data:
 ```
 >> W.saveData % Creates a new file with "_DEWOBBLE" appended to the name
 % OR
->> W.saveData(true)Over-write original (DANGEROUS!)
+>> W.saveData(true) % Over-write original (DANGEROUS!)
 ```
 
 Running the tool with no input arguments will bring up a basic demo dataset. 
