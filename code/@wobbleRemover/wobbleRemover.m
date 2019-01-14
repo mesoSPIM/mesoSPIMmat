@@ -25,9 +25,10 @@ classdef wobbleRemover < handle
         hCorrectedAx % Axis of corrected image
         hOrigIm      % Handle to image object for original image
         hCorrectedIm % Handle to image object for corrected image
-        hWobble     %  Handle of the guide line showing the wobble we are modeling
+        hWobble      %  Handle of the guide line showing the wobble we are modeling
 
-        imData      % The full stack and associated meta-data (see mesotools.rawReader)
+        imData        % The full stack and associated meta-data (see mesotools.rawReader)
+        verbose=false % If true delivery progress message to screen at various times
     end % properties
 
 
@@ -121,6 +122,9 @@ classdef wobbleRemover < handle
 
 
             % Prepare to set up the figure window: close any existing wobbleRemover windows
+            if obj.verbose
+                fprintf('Setting up figure window\n')
+            end
             delete(findobj('Name','wobbleRemover'))
             delete(findobj('Name','wobble parameters'))
 
@@ -148,7 +152,6 @@ classdef wobbleRemover < handle
 
             obj.hFig.CloseRequestFcn = @obj.figClose; %Closing figure deletes object
 
-
             if obj.readWobbleParams %If the file is there then we must have successfully ran the correction
                 %Pass - the model will update and make the line
             else
@@ -158,6 +161,9 @@ classdef wobbleRemover < handle
 
 
             % Set up listeners
+            if obj.verbose
+                fprintf('Setting up listeners\n')
+            end
             obj.listeners{end+1} = addlistener(obj, 'slicePlane', 'PostSet', @obj.updatePlottedPlanes);
             obj.listeners{end+1} = addlistener(obj, 'wobbleModel', 'PostSet', @obj.plotWobbleLine);
 
@@ -174,6 +180,9 @@ classdef wobbleRemover < handle
 
 
             % Add an extra GUI window containing sliders so we can easily set the wobble parameters
+            if obj.verbose
+                fprintf('Building wobble slider GUI\n')
+            end
             obj.wobbleParamGUI = figure;
             obj.wobbleParamGUI.CloseRequestFcn = @obj.figClose; %Closing figure deletes object
             obj.wobbleParamGUI.Name='wobble parameters';
@@ -187,7 +196,6 @@ classdef wobbleRemover < handle
 
             % build the sliders
             sliderL=35;
-            obj.phase
             obj.wobbleParamGUI.UserData.phaseSlider = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'slider','Position',[sliderL,54,figWidth-35,23],...
               'value', obj.phase, 'min',-pi-1, 'max', pi+1, 'SliderStep', [0.0005,0.05]);
             obj.wobbleParamGUI.UserData.phaseText = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'Text','Position',[3,53,sliderL-2,30],...
@@ -241,10 +249,20 @@ classdef wobbleRemover < handle
 
         function runImageCorrection(obj,~,~)
             % Run correction on the single displayed slice
+            if obj.verbose
+                tic
+                fprintf('Starting image correction... ')
+            end
 
-            for ii=1:length(obj.wobbleModel.wobble)
-                tWobble = round(obj.wobbleModel.wobble(ii)) * -1;
-                obj.hCorrectedIm.CData(:,ii) = circshift(obj.hOrigIm.CData(:,ii), tWobble);
+            U = unique(obj.wobbleModel.wobble);
+
+            for ii=1:length(U)
+                f=find(obj.wobbleModel.wobble==U(ii));
+                obj.hCorrectedIm.CData(:,f) = circshift(obj.hOrigIm.CData(:,f), -1*U(ii));
+            end
+
+            if obj.verbose
+                fprintf(' finished image correction in %0.1f seconds\n',toc)
             end
         end % runImageCorrection
 

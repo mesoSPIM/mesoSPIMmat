@@ -31,9 +31,8 @@ function makeWobbleModel(obj,~,~)
     waveForm = (waveForm / MICRONS_PER_PIXEL) * (obj.amplitude/2);
 
     % We now have a scaled waveform we can overlay
-    obj.wobbleModel.wobble = waveForm;
+    obj.wobbleModel.wobble = round(waveForm); %Round to the nearest pixel, we won't do sub-pixel
     obj.wobbleModel.zVals = zVals;
 
-    obj.runImageCorrection
     obj.updatePlottedPlanes
 end % makeWobbleLine

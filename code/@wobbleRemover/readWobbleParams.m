@@ -14,6 +14,10 @@ function success=readWobbleParams(obj)
         return
     end
 
+    if obj.verbose
+        fprintf('Reading cached wobble parameters\n')
+    end
+
     load(fname)
 
     obj.toggleWobbleParamListeners(false)
