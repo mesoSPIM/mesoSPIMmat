@@ -275,7 +275,7 @@ classdef wobbleRemover < handle
             % Probably this is overkill but let's be near for now
             % input arg should be true/false
             for ii=1:length(obj.wobbleParamListeners)
-                obj.wobbleParamListeners.Enabled = enableDisableBool;
+                obj.wobbleParamListeners{ii}.Enabled = enableDisableBool;
             end
         end
 
