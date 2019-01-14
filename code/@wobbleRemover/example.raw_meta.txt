@@ -10,7 +10,7 @@
 [Filter] Empty-Alignment
 [Shutter] Left
 
-[POSTION]
+[POSITION]
 [x_pos] 25100.03
 [y_pos] 52987.74
 [f_pos] 71214.60
@@ -36,3 +36,5 @@
 [CAMERA PARAMETERS]
 [camera_exposure] 0.02
 [camera_line_interval] 7.50e-05
+[x_pixels] 2048
+[y_pixels] 2048

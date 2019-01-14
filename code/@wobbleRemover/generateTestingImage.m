@@ -22,8 +22,8 @@ function imData = generateTestingImage(~)
     % Get the meta-data to match the image
     imData.frames = 1:size(imData.imStack,3);
     imData.z_planes=size(imData.imStack,3);
-    imData.POSTION.z_planes=size(imData.imStack,3);
-    imData.POSTION.z_stepsize = 10;
+    imData.POSITION.z_planes=size(imData.imStack,3);
+    imData.POSITION.z_stepsize = 10;
     imData.z_stepsize = 10;
-    imData.POSTION.z_end = imData.POSTION.z_start + size(imData.imStack,3)*imData.POSTION.z_stepsize;
+    imData.POSITION.z_end = imData.POSITION.z_start + size(imData.imStack,3)*imData.POSITION.z_stepsize;
 end

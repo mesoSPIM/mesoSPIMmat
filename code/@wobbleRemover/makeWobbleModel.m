@@ -3,7 +3,7 @@ function makeWobbleModel(obj,~,~)
     %
     % This method creates the sinewave approximating the stage wobble motion
 
-    zRange = [obj.imData.POSTION.z_start, obj.imData.POSTION.z_end];
+    zRange = [obj.imData.POSITION.z_start, obj.imData.POSITION.z_end];
     if zRange(1)>zRange(2)
         zRange=fliplr(zRange);
         flipped=true;

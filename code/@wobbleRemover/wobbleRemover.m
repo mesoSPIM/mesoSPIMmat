@@ -114,7 +114,7 @@ classdef wobbleRemover < handle
 
 
             % We may get unexpected behavior if the user has loaded a subset of frames, so block this
-            if size(obj.imData.imStack,3) ~= obj.imData.POSTION.z_planes
+            if size(obj.imData.imStack,3) ~= obj.imData.POSITION.z_planes
                 fprintf('Image stack seems to be missing frames. wobbleRemover will not proceed.\n')
                 delete(obj)
                 return
