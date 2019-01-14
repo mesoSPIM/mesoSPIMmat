@@ -128,7 +128,7 @@ classdef wobbleRemover < handle
             % Set up the figure window
             obj.hFig = clf;
             obj.hFig.Name='wobbleRemover';
-            obj.slicePlane=round(size(obj.imData.imStack,1)/2);
+            obj.slicePlane=round(size(obj.imData.imStack,3)/2);
 
             obj.hOrigAx = subplot(1,2,1);
             obj.hOrigIm = imagesc( squeeze(obj.imData.imStack(:,obj.slicePlane,:)) );
@@ -187,6 +187,7 @@ classdef wobbleRemover < handle
 
             % build the sliders
             sliderL=35;
+            obj.phase
             obj.wobbleParamGUI.UserData.phaseSlider = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'slider','Position',[sliderL,54,figWidth-35,23],...
               'value', obj.phase, 'min',-pi-1, 'max', pi+1, 'SliderStep', [0.0005,0.05]);
             obj.wobbleParamGUI.UserData.phaseText = uicontrol('Parent',obj.wobbleParamGUI, 'Style', 'Text','Position',[3,53,sliderL-2,30],...

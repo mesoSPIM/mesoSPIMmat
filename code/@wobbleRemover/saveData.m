@@ -8,7 +8,8 @@ function saveData(obj,overwrite)
     end
 
 
-    fname = regexprep(obj.imData.Metadata_for_file,'.*/','');
+    fname = regexprep(obj.imData.Metadata_for_file,'.*/',''); %Strip path
+    fname = regexprep(fname,'\.*',''); %Strip extension
 
     if overwrite==false
         fname = [fname,'_DEWOBBLE'];
