@@ -3,8 +3,8 @@
 This repository contains tools for handling mesoSPIM data in MATLAB.
 
 ## Contents
-* raw data file reader
-* bare-bones de-wobbler for parasitic motion of z-stage
+* Tools for handling raw data files: `mesotools.rawReader`, `mesotools.rawWriter`, `mesotools.metaDataReader`
+* bare-bones de-wobbler for parasitic motion of z-stage: `wobbleRemover`
 
 
 ## De-wobbler
