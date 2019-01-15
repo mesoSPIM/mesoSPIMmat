@@ -71,12 +71,14 @@ classdef wobbleRemover < handle
             % Find a nice plane to view:
             % W.slicePlane
             %
-            % Then modify the following parameters and observe results:
+            % Then modify the following parameters and observe results. You can 
+            % also use the secondary GUI window.
             % W.amplitude
             % W.phase
             % W.wavelength %shouldn't need much tweaking
             %
             % When you're happy you can save the data
+            % W.correctStack
             % W.saveData %Creates a new file with "_DEWOBBLE" appended to the name
             % W.saveData(true) %Over-write original (DANGEROUS!)
             %

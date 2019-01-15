@@ -13,9 +13,12 @@ function correctStack(obj,reverseCorrect)
         scaleFactor = -1;
     end
 
-    for ii = 1:size(obj.imData.imStack,3)
-        tSlice = squeeze(obj.imData.imStack(:,:,ii));
-        tWobble = round(obj.wobbleModel.wobble(ii)) * scaleFactor;
-        obj.imData.imStack(:,:,ii) = circshift(tSlice, tWobble);
+    U = unique(obj.wobbleModel.wobble);
+
+    for ii=1:length(U)
+        f=find(obj.wobbleModel.wobble==U(ii));
+        obj.imData.imStack(:,:,f) = circshift(obj.imData.imStack(:,:,f), scaleFactor*U(ii));
     end
+
+
 end % correctStack
