@@ -8,10 +8,11 @@ This repository contains tools for handling mesoSPIM data in MATLAB.
 
 
 ## De-wobbler
-Some of the original mesoSPIMs have z-drives which have a small, periodic side-to-side "wobble" as they move in z.
+Some of the original mesoSPIMs have x and z-drives which have a small, periodic side-to-side "wobble" as they move.
 This originates from play in the lead-screw and should have a period of 500 microns and amplitude of about 15 to 30 microns.
 The exact amplitude and phase will vary from system to system but should be consistent within a system from run to run. 
 This tool models the error as a sine wave and cancels it out.
+It has so far been tested only for z motion, where the problem is probably more of an issue. 
 
 `wobbleRemove` is a MATLAB class that allows the user to interactively remove much of the wobble artifact using a simple GUI. 
 The tool is currently a very early version and hardly tested. 
