@@ -65,3 +65,7 @@ Further work is likely needed to come up with ways to derive the parameters auto
 
 ### Known issues
 * The number of microns per pixel is hard-coded as "1" and so the amplitude of the wobble line is in pixels not microns
+
+### License
+This code is released under GPL v3.
+Please see attached LICENSE.txt for details if you plan to distribute the code yourself. 
