@@ -134,7 +134,7 @@ classdef wobbleRemover < handle
             % Set up the figure window
             obj.hFig = clf;
             obj.hFig.Name='wobbleRemover';
-            obj.slicePlane=round(size(obj.imData.imStack,3)/2);
+            obj.slicePlane=round(size(obj.imData.imStack,2)/2);
 
             obj.hOrigAx = subplot(1,2,1);
             obj.hOrigIm = imagesc( squeeze(obj.imData.imStack(:,obj.slicePlane,:)) );
@@ -311,9 +311,9 @@ classdef wobbleRemover < handle
     methods
         function set.slicePlane(obj,inArg)
             if inArg<1 
-                fprintf('Value out of range for imStack\n')
-            elseif inArg>size(obj.imData.imStack,3)
-                fprintf('Value out of range for imStack, which has %d planes\n',size(obj.imData.imStack,3))                
+                fprintf('ERROR: Value out of range for imStack\n')
+            elseif inArg>size(obj.imData.imStack,2)
+                fprintf('ERROR: Value out of range for imStack, which has %d planes\n',size(obj.imData.imStack,2))
             else
                 obj.slicePlane = inArg;
             end
